@@ -111,10 +111,10 @@ export async function PostState(state: State, client_id: string): Promise<string
                 0
             ],
             "seed": state.seed > 0 ? state.seed : Math.floor(Math.random() * 9999999998 + 1),
-            "steps": 28,
-            "cfg": 5,
-            "sampler_name": "euler",
-            "scheduler": "normal",
+            "steps": state.steps,
+            "cfg": state.cfg,
+            "sampler_name": state.sampler,
+            "scheduler": state.scheduler,
             "positive": [
                 "2-CLIPTextEncode",
                 0
