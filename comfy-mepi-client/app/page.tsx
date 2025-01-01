@@ -1,6 +1,6 @@
 "use client"
 
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 import {ThemeSwitch} from "@/components/theme-switch";
 import {Accordion, AccordionItem} from "@nextui-org/accordion";
 import {Select, SelectItem} from "@nextui-org/select";
@@ -16,11 +16,14 @@ import Prompt from "@/components/Prompt";
 import PromptBox from "@/components/PromptBox";
 import {useDisclosure} from "@nextui-org/use-disclosure";
 import {Drawer, DrawerBody, DrawerHeader} from "@nextui-org/drawer";
-import {DrawerContent} from "@nextui-org/react";
-import {MdOutlineFileDownload, MdSettings} from "react-icons/md";
+import {AutocompleteItem, DrawerContent} from "@nextui-org/react";
+import {MdDeleteForever, MdOutlineFileDownload, MdSave, MdSettings} from "react-icons/md";
 import {Image} from "@nextui-org/image";
 import {CircularProgress} from "@nextui-org/progress";
 import DanbooruTrieSearchProvider from "@/components/DanbooruTrieSearch";
+import {Autocomplete} from "@nextui-org/autocomplete";
+import {FaFileImport} from "react-icons/fa6";
+import {Popover, PopoverContent, PopoverTrigger} from "@nextui-org/popover";
 
 export default function Home() {
     const client_id = useRef(uuidv4())
@@ -50,6 +53,8 @@ export default function Home() {
     const [progress, setProgress] = useState("Wait for Something...")
 
     const [inited, setInited] = useState(false)
+
+    const [presets, setPresets] = useState<string[]>([])
 
     const imageSizes = [
         "1536x640",
@@ -97,6 +102,20 @@ export default function Home() {
         }))
     }
 
+    function loadState(state: State) {
+        setSelectedCheckpoint(state.checkpoint)
+        setSelectedVAE(state.vae)
+        setLoras(state.loras)
+        setPrompts(state.prompts)
+        setNegativePrompt(state.negativePrompt)
+        setSelectedImageSize(state.imageSize)
+        setSteps(state.steps)
+        setCfg(state.cfg)
+        setSelectedSampler(state.sampler)
+        setSelectedScheduler(state.scheduler)
+        setSeed(state.seed)
+    }
+
     useEffect(() => {
         async function work() {
             const objectInfoReq = await fetch(getAPIServer() + "object_info")
@@ -113,20 +132,15 @@ export default function Home() {
             if (stateStr) {
                 const state: State = JSON.parse(stateStr)
 
-                setSelectedCheckpoint(state.checkpoint)
-                setSelectedVAE(state.vae)
-                setLoras(state.loras)
-                setPrompts(state.prompts)
-                setNegativePrompt(state.negativePrompt)
-                setSelectedImageSize(state.imageSize)
-                setSteps(state.steps)
-                setCfg(state.cfg)
-                setSelectedSampler(state.sampler)
-                setSelectedScheduler(state.scheduler)
-                setSeed(state.seed)
+                loadState(state)
             }
 
             setInited(true)
+        }
+
+        const presetsStr = localStorage.getItem("presets")
+        if (presetsStr) {
+            setPresets(JSON.parse(presetsStr)["presets"])
         }
 
         work().then()
@@ -156,6 +170,14 @@ export default function Home() {
 
         localStorage.setItem("lastState", JSON.stringify(state))
     }, [selectedCheckpoint, selectedVAE, loras, prompts, negativePrompt, selectedImageSize, steps, cfg, selectedSampler, selectedScheduler, seed]);
+
+    useEffect(() => {
+        if (!inited) return;
+
+        localStorage.setItem("presets", JSON.stringify({
+            "presets": presets
+        }))
+    }, [presets])
 
     const [isConnected, setConnected] = useState(false)
     const [lastPromptUUID, setLastPromptUUID] = useState("")
@@ -221,6 +243,9 @@ export default function Home() {
 
     const [destImageSrc, setDestImageSrc] = useState<string | undefined>(undefined)
 
+    const [currentPreset, setCurrentPreset] = useState("")
+    const deleteConfirmClosure = useDisclosure()
+
     return (
         <section className={"flex flex-col p-1 w-screen h-screen items-center"}>
             <header className={"flex flex-row items-center w-full max-w-7xl"}>
@@ -241,6 +266,57 @@ export default function Home() {
                                 <DrawerBody>
                                     <section className={"max-w-md flex flex-col gap-4"}>
                                         <Accordion selectionMode={"multiple"}>
+                                            <AccordionItem key="preset" aria-label="Preset" title="Preset">
+                                                <div className={"w-full h-full"}>
+                                                    <Autocomplete allowsCustomValue inputValue={currentPreset}
+                                                                  onInputChange={(value) => {
+                                                                      setCurrentPreset(value)
+                                                                  }} label={"Preset name (new or exist)"}>
+                                                        {presets.map((name) => (
+                                                            <AutocompleteItem key={name}>{name}</AutocompleteItem>
+                                                        ))}
+                                                    </Autocomplete>
+                                                    <div className={"w-full flex justify-end gap-2 my-2"}>
+                                                        <Button isIconOnly onPress={() => {
+                                                            localStorage.setItem(`preset-${currentPreset}`, JSON.stringify(generateState()))
+                                                            if (!presets.includes(currentPreset)) {
+                                                                setPresets([...presets, currentPreset])
+                                                            }
+                                                        }}><MdSave size={"24"}/></Button>
+                                                        <Button isDisabled={!presets.includes(currentPreset)}
+                                                                isIconOnly onPress={() => {
+                                                            const preset = localStorage.getItem(`preset-${currentPreset}`)
+                                                            if (!preset) return
+
+                                                            loadState(JSON.parse(preset))
+                                                        }}><FaFileImport size={"24"}/></Button>
+                                                        <Popover placement="bottom" showArrow isOpen={deleteConfirmClosure.isOpen} onOpenChange={deleteConfirmClosure.onOpenChange}>
+                                                            <PopoverTrigger>
+                                                                <Button isDisabled={!presets.includes(currentPreset)}
+                                                                        isIconOnly><MdDeleteForever
+                                                                    size={"24"}/></Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent>
+                                                                <div className="px-1 py-2">
+                                                                    <Button
+                                                                        color={"danger"}
+                                                                        startContent={
+                                                                            <MdDeleteForever size={"24"}/>}
+                                                                        onPress={() => {
+                                                                            localStorage.removeItem(`preset-${currentPreset}`)
+                                                                            setPresets(presets.filter((item) => {
+                                                                                return item != currentPreset
+                                                                            }))
+                                                                            setCurrentPreset("")
+                                                                            deleteConfirmClosure.onClose()
+                                                                        }}>Delete this preset? This cannot be
+                                                                        undone.</Button>
+                                                                </div>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    </div>
+                                                </div>
+                                            </AccordionItem>
                                             <AccordionItem key="model" aria-label="Model" title="Model">
                                                 <div className={"flex flex-col gap-4"}>
                                                     <Select label={"Checkpoint"} selectedKeys={[selectedCheckpoint]}
@@ -365,8 +441,7 @@ export default function Home() {
                         setLastPromptUUID(uuid)
                         setProgress("Wait for Queue")
                         setInProgress(true)
-                    }
-                    catch {
+                    } catch {
 
                     }
                 }}>Generate!</Button>
