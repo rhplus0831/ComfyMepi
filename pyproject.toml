@@ -1,0 +1,14 @@
+[project]
+name = "mepi"
+description = "Another mobile frontend for ComfyUI"
+version = "1.0.0"
+license = {file = "LICENSE"}
+
+[project.urls]
+Repository = "https://github.com/rhplus0831/ComfyMepi"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyMepi"
+Icon = ""
