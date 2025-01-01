@@ -1,5 +1,6 @@
 "use client"
 
+import { v4 as uuidv4 } from 'uuid';
 import {ThemeSwitch} from "@/components/theme-switch";
 import {Accordion, AccordionItem} from "@nextui-org/accordion";
 import {Select, SelectItem} from "@nextui-org/select";
@@ -22,7 +23,7 @@ import {CircularProgress} from "@nextui-org/progress";
 import DanbooruTrieSearchProvider from "@/components/DanbooruTrieSearch";
 
 export default function Home() {
-    const client_id = useRef(crypto.randomUUID())
+    const client_id = useRef(uuidv4())
 
     const [checkpoints, setCheckPoints] = useState<string[]>([])
     const [VAEs, setVAEs] = useState<string[]>([])
@@ -275,7 +276,7 @@ export default function Home() {
                                                     }
                                                     <Button onPress={() => {
                                                         const newLora: Lora = {
-                                                            "uuid": crypto.randomUUID(),
+                                                            "uuid": uuidv4(),
                                                             "name": "",
                                                             "modelWeight": 1.0,
                                                             "clipWeight": 1.0
@@ -297,7 +298,7 @@ export default function Home() {
                                         }
                                         <Button onPress={() => {
                                             const newPrompt: Prompt = {
-                                                "uuid": crypto.randomUUID(),
+                                                "uuid": uuidv4(),
                                                 "name": "",
                                                 "prompt": ""
                                             }
