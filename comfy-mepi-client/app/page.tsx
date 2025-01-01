@@ -359,11 +359,16 @@ export default function Home() {
             </div>
             <div className={"flex-none w-full max-w-7xl flex flex-row"}>
                 <Button className={"flex-1"} disabled={!isConnected} onPress={async () => {
-                    const uuid = await PostState(generateState(), client_id.current)
-                    console.log(uuid)
-                    setLastPromptUUID(uuid)
-                    setProgress("Wait for Queue")
-                    setInProgress(true)
+                    try {
+                        const uuid = await PostState(generateState(), client_id.current)
+                        console.log(uuid)
+                        setLastPromptUUID(uuid)
+                        setProgress("Wait for Queue")
+                        setInProgress(true)
+                    }
+                    catch {
+
+                    }
                 }}>Generate!</Button>
                 <Button className={"flex-none"} isIconOnly disabled={!isConnected}
                         onPress={async () => {

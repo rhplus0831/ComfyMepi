@@ -20,6 +20,11 @@ export default interface State {
 export async function PostState(state: State, client_id: string): Promise<string> {
     const prompt: any = {}
 
+    if (!state.checkpoint) {
+        alert("체크포인트(Checkpoint)를 설정해야합니다.")
+        throw Error()
+    }
+
     prompt["1-CheckpointLoaderSimple"] = {
         "inputs": {
             "ckpt_name": state.checkpoint
@@ -67,6 +72,7 @@ export async function PostState(state: State, client_id: string): Promise<string
     let positive = ''
 
     state.prompts.forEach((p) => {
+        if (!p.prompt.trim()) return;
         positive += p.prompt.trimEnd() + ", "
     })
     positive = positive.slice(0, positive.length - 2)
@@ -93,6 +99,11 @@ export async function PostState(state: State, client_id: string): Promise<string
         "class_type": "CLIPTextEncode"
     }
 
+    if (!state.imageSize) {
+        alert("이미지 크기(imageSize)를 설정해야합니다.")
+        throw Error()
+    }
+
     const splited = state.imageSize.split("x")
 
     prompt["4-EmptyLatentImage"] = {
@@ -102,6 +113,16 @@ export async function PostState(state: State, client_id: string): Promise<string
             "batch_size": 1
         },
         "class_type": "EmptyLatentImage"
+    }
+
+    if (!state.sampler) {
+        alert("샘플러(sampler)를 설정해야합니다.")
+        throw Error()
+    }
+
+    if (!state.scheduler) {
+        alert("스케쥴러(scheduler)를 설정해야합니다.")
+        throw Error()
     }
 
     prompt["5-KSampler"] = {
