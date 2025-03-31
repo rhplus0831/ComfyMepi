@@ -48,6 +48,7 @@ export default function Home() {
     const [steps, setSteps] = useState(25)
     const [cfg, setCfg] = useState(5)
     const [seed, setSeed] = useState(-1)
+    const [json, setJson] = useState("")
 
     const [inProgress, setInProgress] = useState(false)
     const [progress, setProgress] = useState("Wait for Something...")
@@ -114,6 +115,7 @@ export default function Home() {
         setSelectedSampler(state.sampler)
         setSelectedScheduler(state.scheduler)
         setSeed(state.seed)
+        setJson(state.json)
     }
 
     useEffect(() => {
@@ -158,7 +160,8 @@ export default function Home() {
             "cfg": cfg,
             "sampler": selectedSampler,
             "scheduler": selectedScheduler,
-            "seed": seed
+            "seed": seed,
+            "json": json,
         }
 
         return state
@@ -169,7 +172,7 @@ export default function Home() {
         const state = generateState();
 
         localStorage.setItem("lastState", JSON.stringify(state))
-    }, [selectedCheckpoint, selectedVAE, loras, prompts, negativePrompt, selectedImageSize, steps, cfg, selectedSampler, selectedScheduler, seed]);
+    }, [selectedCheckpoint, selectedVAE, loras, prompts, negativePrompt, selectedImageSize, steps, cfg, selectedSampler, selectedScheduler, seed, json]);
 
     useEffect(() => {
         if (!inited) return;
@@ -209,8 +212,23 @@ export default function Home() {
     async function findAndDisplayPrompt(uuid: string) {
         const response = await fetch(getAPIServer() + "history/" + uuid)
         const history = await response.json()
-        const imageMeta = history[uuid]["outputs"]["8-SaveImage"]["images"][0]
+        let imageMeta
+        if (json.trim() === '') {
+            imageMeta = history[uuid]["outputs"]["8-SaveImage"]["images"][0]
+        } else {
+            let found = '?'
+            const prompt: any = JSON.parse(json)
+            const data = Object.entries(prompt)
 
+            data.forEach((value) => {
+                // @ts-ignore
+                if (value[1]['class_type'] == 'MepiSaveImage') {
+                    found = value[0]
+                }
+            })
+
+            imageMeta = history[uuid]["outputs"][found]["images"][0]
+        }
         setDestImageSrc(getAPIServer() + `view?filename=${imageMeta["filename"]}&subfolder=${imageMeta["subfolder"]}&type=${imageMeta["type"]}&preview=true`)
     }
 
@@ -262,7 +280,7 @@ export default function Home() {
                     <DrawerContent>
                         {(onClose) => (
                             <>
-                                <DrawerHeader>생성 옵션</DrawerHeader>
+                                <DrawerHeader>생성 옵션{json ? " (API Mode)" : ""}</DrawerHeader>
                                 <DrawerBody>
                                     <section className={"max-w-md flex flex-col gap-4"}>
                                         <Accordion selectionMode={"multiple"}>
@@ -290,7 +308,9 @@ export default function Home() {
 
                                                             loadState(JSON.parse(preset))
                                                         }}><FaFileImport size={"24"}/></Button>
-                                                        <Popover placement="bottom" showArrow isOpen={deleteConfirmClosure.isOpen} onOpenChange={deleteConfirmClosure.onOpenChange}>
+                                                        <Popover placement="bottom" showArrow
+                                                                 isOpen={deleteConfirmClosure.isOpen}
+                                                                 onOpenChange={deleteConfirmClosure.onOpenChange}>
                                                             <PopoverTrigger>
                                                                 <Button isDisabled={!presets.includes(currentPreset)}
                                                                         isIconOnly><MdDeleteForever
@@ -363,6 +383,11 @@ export default function Home() {
                                                 </div>
                                             </AccordionItem>
                                         </Accordion>
+                                        <Textarea disableAutosize label={"Exported API Json"}
+                                                  placeholder={"Export (API) from ComfyUI, and paste that here"}
+                                                  value={json} onChange={(event) => {
+                                            setJson(event.target.value)
+                                        }}/>
                                         {
                                             prompts.map((prompt) => (
                                                 <div key={prompt.uuid}>
@@ -441,8 +466,8 @@ export default function Home() {
                         setLastPromptUUID(uuid)
                         setProgress("Wait for Queue")
                         setInProgress(true)
-                    } catch {
-
+                    } catch (e) {
+                        console.log(e)
                     }
                 }}>Generate!</Button>
                 <Button className={"flex-none"} isIconOnly disabled={!isConnected}

@@ -1,3 +1,5 @@
+//@ts-nocheck
+
 import Lora from "@/components/Lora";
 import Prompt from "@/components/Prompt";
 import {getAPIServer} from "@/config/site";
@@ -13,12 +15,70 @@ export default interface State {
     cfg: number
     sampler: string,
     scheduler: string,
-    seed: number
+    seed: number,
+    json: string
 }
 
-// @ts-ignore
+export async function PostAPI(state: State, client_id: string): Promise<string> {
+    const prompt: any = JSON.parse(state.json)
+    const data = Object.entries(prompt)
+
+    data.forEach((value) => {
+        if (value[1]['class_type'] == 'MepiCheckpoint') {
+            value[1]['inputs']['ckpt_name'] = state.checkpoint
+            value[1]['inputs']['loras'] = ''
+            if (state.loras.length != 0) {
+                let build = ''
+                for (let i = 0; i < state.loras.length; i++) {
+                    const lora = state.loras[i]
+                    build += `${lora.name},${lora.modelWeight},${lora.clipWeight},`
+                }
+                value[1]['inputs']['loras'] = build.slice(0, -1)
+            }
+        } else if (value[1]['class_type'] == 'MepiPositivePrompt') {
+            let positive = ''
+
+            state.prompts.forEach((p) => {
+                if (!p.prompt.trim()) return;
+                positive += p.prompt.trimEnd() + ", "
+            })
+            positive = positive.slice(0, positive.length - 2)
+
+            value[1]['inputs']['prompt'] = positive
+        } else if (value[1]['class_type'] == 'MepiNegativePrompt') {
+            value[1]['inputs']['prompt'] = state.negativePrompt
+        } else if (value[1]['class_type'] == 'MepiStepsAndCfg') {
+            value[1]['inputs']['steps'] = state.steps
+            value[1]['inputs']['cfg'] = state.cfg
+        } else if (value[1]['class_type'] == 'MepiImageSize') {
+            const split = state.imageSize.split("x")
+
+            value[1]['inputs']['width'] = parseInt(split[0])
+            value[1]['inputs']['height'] = parseInt(split[1])
+        } else if (value[1]['class_type'] == 'KSampler') {
+            value[1]['inputs']['seed'] = state.seed > 0 ? state.seed : Math.floor(Math.random() * 9999999998 + 1)
+        }
+    })
+
+    const response = await fetch(getAPIServer() + "prompt", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({"prompt": prompt, "client_id": client_id})
+    })
+
+    const result = await response.json()
+
+    return result["prompt_id"]
+}
+
 export async function PostState(state: State, client_id: string): Promise<string> {
     const prompt: any = {}
+
+    if (state.json.trim().length !== 0) {
+        return await PostAPI(state, client_id)
+    }
 
     if (!state.checkpoint) {
         alert("체크포인트(Checkpoint)를 설정해야합니다.")
