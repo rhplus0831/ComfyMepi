@@ -11,14 +11,13 @@ import {useEffect, useRef, useState} from "react";
 import {getAPIServer} from "@/config/site";
 import Lora from "@/components/Lora";
 import LoraBox from "@/components/LoraBox";
-import State, {PostState} from "@/components/State";
+import State, {PostState, StateContainer} from "@/components/State";
 import Prompt from "@/components/Prompt";
 import PromptBox from "@/components/PromptBox";
 import {useDisclosure} from "@nextui-org/use-disclosure";
 import {Drawer, DrawerBody, DrawerHeader} from "@nextui-org/drawer";
 import {AutocompleteItem, DrawerContent} from "@nextui-org/react";
 import {MdDeleteForever, MdOutlineFileDownload, MdSave, MdSettings} from "react-icons/md";
-import {Image} from "@nextui-org/image";
 import {CircularProgress} from "@nextui-org/progress";
 import DanbooruTrieSearchProvider from "@/components/DanbooruTrieSearch";
 import {Autocomplete} from "@nextui-org/autocomplete";
@@ -26,7 +25,7 @@ import {FaFileImport} from "react-icons/fa6";
 import {Popover, PopoverContent, PopoverTrigger} from "@nextui-org/popover";
 
 export default function Home() {
-    const client_id = useRef(uuidv4())
+    const clientId = useRef("")
 
     const [checkpoints, setCheckPoints] = useState<string[]>([])
     const [VAEs, setVAEs] = useState<string[]>([])
@@ -50,12 +49,14 @@ export default function Home() {
     const [seed, setSeed] = useState(-1)
     const [json, setJson] = useState("")
 
+    const [useLocalPresets, setUseLocalPresets] = useState(false)
+
     const [inProgress, setInProgress] = useState(false)
     const [progress, setProgress] = useState("Wait for Something...")
 
     const [inited, setInited] = useState(false)
 
-    const [presets, setPresets] = useState<string[]>([])
+    const [presets, setPresets] = useState<StateContainer>({})
 
     const imageSizes = [
         "1536x640",
@@ -118,8 +119,25 @@ export default function Home() {
         setJson(state.json)
     }
 
+    async function loadPresets() {
+        if (localStorage.getItem("localPreset") === "true") {
+            const presetsStr = localStorage.getItem("presets")
+            if (presetsStr) {
+                setPresets(JSON.parse(presetsStr)["presets"])
+            }
+        } else {
+            const presetsReq = await fetch(getAPIServer() + "mepi/presets", {
+                method: "GET"
+            })
+            const presets = await presetsReq.json()
+            console.log(presets)
+            console.log("presets loaded")
+            setPresets(presets)
+        }
+    }
+
     useEffect(() => {
-        async function work() {
+        async function initAsync() {
             const objectInfoReq = await fetch(getAPIServer() + "object_info")
             const objectInfo = await objectInfoReq.json()
 
@@ -137,15 +155,23 @@ export default function Home() {
                 loadState(state)
             }
 
+
+            await loadPresets()
+
             setInited(true)
         }
 
-        const presetsStr = localStorage.getItem("presets")
-        if (presetsStr) {
-            setPresets(JSON.parse(presetsStr)["presets"])
+
+        const cid = localStorage.getItem("clientId")
+        if (cid) {
+            clientId.current = cid
+        } else {
+            const uuid = uuidv4()
+            localStorage.setItem("clientId", uuid)
+            clientId.current = uuid
         }
 
-        work().then()
+        initAsync().then()
     }, [])
 
     function generateState() {
@@ -174,33 +200,56 @@ export default function Home() {
         localStorage.setItem("lastState", JSON.stringify(state))
     }, [selectedCheckpoint, selectedVAE, loras, prompts, negativePrompt, selectedImageSize, steps, cfg, selectedSampler, selectedScheduler, seed, json]);
 
-    useEffect(() => {
-        if (!inited) return;
+    async function savePresets(presets: StateContainer, target: string) {
+        if (localStorage.getItem("localPreset") === "true") {
+            localStorage.setItem("presets", JSON.stringify({
+                "presets": presets
+            }))
+        } else {
+            async function postSelf() {
+                await fetch(getAPIServer() + `mepi/presets/${target}`, {
+                    method: "POST",
+                    body: JSON.stringify(presets[target])
+                })
+            }
 
-        localStorage.setItem("presets", JSON.stringify({
-            "presets": presets
-        }))
-    }, [presets])
+            postSelf().then()
+        }
+    }
+
+    async function deletePresets(presets: StateContainer, target: string) {
+        if (localStorage.getItem("localPreset") === "true") {
+            await savePresets(presets, target)
+        } else {
+            async function postSelf() {
+                await fetch(getAPIServer() + `mepi/presets/${target}`, {
+                    method: "DELETE"
+                })
+            }
+
+            postSelf().then()
+        }
+    }
 
     const [isConnected, setConnected] = useState(false)
     const [lastPromptUUID, setLastPromptUUID] = useState("")
 
+    function generateWebsocket() {
+        ws.current = new WebSocket(getAPIServer().replace("http", "ws") + "ws?clientId=" + clientId.current);
+        ws.current.onopen = () => {
+            setConnected(true)
+        }
+        ws.current.onerror = () => {
+            setTimeout(generateWebsocket, 1000)
+            setConnected(false)
+        }
+        ws.current.onclose = () => {
+            setConnected(false)
+        };
+    }
+
     const ws = useRef<WebSocket | null>(null);
     useEffect(() => {
-        function generateWebsocket() {
-            ws.current = new WebSocket(getAPIServer().replace("http", "ws") + "ws?clientId=" + client_id.current);
-            ws.current.onopen = () => {
-                setConnected(true)
-            }
-            ws.current.onerror = () => {
-                setTimeout(generateWebsocket, 1000)
-                setConnected(false)
-            }
-            ws.current.onclose = () => {
-                setConnected(false)
-            };
-        }
-
         generateWebsocket()
         return () => {
             if (ws.current && ws.current.readyState === 1) {
@@ -265,8 +314,8 @@ export default function Home() {
     const deleteConfirmClosure = useDisclosure()
 
     return (
-        <section className={"flex flex-col p-1 w-screen h-screen items-center"}>
-            <header className={"flex flex-row items-center w-full max-w-7xl"}>
+        <section className={"flex flex-col p-1 w-full h-full max-h-full items-center"}>
+            <header className={"flex flex-row items-center w-full max-w-7xl flex-shrink-0"}>
                 <button onClick={drawerClosure.onOpen}>
                     <MdSettings size={32}/>
                 </button>
@@ -290,30 +339,29 @@ export default function Home() {
                                                                   onInputChange={(value) => {
                                                                       setCurrentPreset(value)
                                                                   }} label={"Preset name (new or exist)"}>
-                                                        {presets.map((name) => (
-                                                            <AutocompleteItem key={name}>{name}</AutocompleteItem>
+                                                        {Object.keys(presets).map((value) => (
+                                                            <AutocompleteItem
+                                                                key={value}>{value}</AutocompleteItem>
                                                         ))}
                                                     </Autocomplete>
                                                     <div className={"w-full flex justify-end gap-2 my-2"}>
                                                         <Button isIconOnly onPress={() => {
-                                                            localStorage.setItem(`preset-${currentPreset}`, JSON.stringify(generateState()))
-                                                            if (!presets.includes(currentPreset)) {
-                                                                setPresets([...presets, currentPreset])
-                                                            }
+                                                            const newPresets = presets
+                                                            newPresets[currentPreset] = generateState()
+                                                            setPresets({...newPresets})
+                                                            savePresets(newPresets, currentPreset).then()
                                                         }}><MdSave size={"24"}/></Button>
-                                                        <Button isDisabled={!presets.includes(currentPreset)}
+                                                        <Button isDisabled={!presets.hasOwnProperty(currentPreset)}
                                                                 isIconOnly onPress={() => {
-                                                            const preset = localStorage.getItem(`preset-${currentPreset}`)
-                                                            if (!preset) return
-
-                                                            loadState(JSON.parse(preset))
+                                                            loadState(presets[currentPreset])
                                                         }}><FaFileImport size={"24"}/></Button>
                                                         <Popover placement="bottom" showArrow
                                                                  isOpen={deleteConfirmClosure.isOpen}
                                                                  onOpenChange={deleteConfirmClosure.onOpenChange}>
                                                             <PopoverTrigger>
-                                                                <Button isDisabled={!presets.includes(currentPreset)}
-                                                                        isIconOnly><MdDeleteForever
+                                                                <Button
+                                                                    isDisabled={!presets.hasOwnProperty(currentPreset)}
+                                                                    isIconOnly><MdDeleteForever
                                                                     size={"24"}/></Button>
                                                             </PopoverTrigger>
                                                             <PopoverContent>
@@ -323,10 +371,10 @@ export default function Home() {
                                                                         startContent={
                                                                             <MdDeleteForever size={"24"}/>}
                                                                         onPress={() => {
-                                                                            localStorage.removeItem(`preset-${currentPreset}`)
-                                                                            setPresets(presets.filter((item) => {
-                                                                                return item != currentPreset
-                                                                            }))
+                                                                            let deleteCopy = presets
+                                                                            delete deleteCopy[currentPreset]
+                                                                            setPresets({...deleteCopy})
+                                                                            deletePresets(deleteCopy, currentPreset).then()
                                                                             setCurrentPreset("")
                                                                             deleteConfirmClosure.onClose()
                                                                         }}>Delete this preset? This cannot be
@@ -452,16 +500,17 @@ export default function Home() {
                     </DrawerContent>
                 </Drawer>
             </DanbooruTrieSearchProvider>
-            <div className={"flex-1 relative flex items-center justify-center"}>
-                <Image radius={"none"} src={destImageSrc}/>
+            <div className={"relative flex items-center justify-center flex-grow min-h-0 overflow-hidden"}>
+                <img alt={"ai-generated content"} src={destImageSrc}
+                     className="max-w-full max-h-full object-contain"/>
                 {inProgress ?
                     <CircularProgress className={"absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"}
                                       size={"lg"}/> : ""}
             </div>
-            <div className={"flex-none w-full max-w-7xl flex flex-row"}>
+            <div className={"w-full max-w-7xl flex flex-row flex-shrink-0"}>
                 <Button className={"flex-1"} disabled={!isConnected} onPress={async () => {
                     try {
-                        const uuid = await PostState(generateState(), client_id.current)
+                        const uuid = await PostState(generateState(), clientId.current)
                         console.log(uuid)
                         setLastPromptUUID(uuid)
                         setProgress("Wait for Queue")
@@ -475,7 +524,6 @@ export default function Home() {
                             window.open(destImageSrc?.replace("&preview=true", ""))
                         }}><MdOutlineFileDownload size={30}/></Button>
             </div>
-
             {inProgress ? <section
                 className={`absolute bottom-5 left-1/2 -translate-x-1/2 w-screen lg:w-1/2 h-14 p-7 bg-[#000000BB] flex items-center justify-center text-center rounded-2xl`}>
                 {progress}

@@ -4,6 +4,10 @@ import Lora from "@/components/Lora";
 import Prompt from "@/components/Prompt";
 import {getAPIServer} from "@/config/site";
 
+export interface StateContainer {
+    [name: string]: State
+}
+
 export default interface State {
     checkpoint: string,
     vae: string,

@@ -42,8 +42,8 @@ export default function RootLayout({
             )}
         >
         <Providers themeProps={{attribute: "class", defaultTheme: "dark"}}>
-            <div className="relative flex flex-col h-screen">
-                <main className={"overflow-y-scroll"}>
+            <div className="relative flex flex-col w-screen h-screen max-w-screen max-h-screen">
+                <main className={"overflow-hidden w-screen h-screen"}>
                     {children}
                 </main>
             </div>
