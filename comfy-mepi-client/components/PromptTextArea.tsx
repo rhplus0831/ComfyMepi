@@ -1,5 +1,5 @@
-import {Textarea} from "@heroui/input";
-import {Listbox, ListboxItem} from "@heroui/listbox";
+import {Textarea} from "@nextui-org/input";
+import {Listbox, ListboxItem} from "@nextui-org/listbox";
 import {useContext, useRef, useState} from "react";
 import {DanbooruTag, DanbooruTrieSearchContext} from "@/components/DanbooruTrieSearch";
 import build from "next/dist/build";

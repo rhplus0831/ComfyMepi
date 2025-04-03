@@ -2,11 +2,11 @@
 
 import {v4 as uuidv4} from 'uuid';
 import {ThemeSwitch} from "@/components/theme-switch";
-import {Accordion, AccordionItem} from "@heroui/accordion";
-import {Select, SelectItem} from "@heroui/select";
-import {Button} from "@heroui/button";
-import {Input, Textarea} from "@heroui/input";
-import {Slider} from "@heroui/slider";
+import {Accordion, AccordionItem} from "@nextui-org/accordion";
+import {Select, SelectItem} from "@nextui-org/select";
+import {Button} from "@nextui-org/button";
+import {Input, Textarea} from "@nextui-org/input";
+import {Slider} from "@nextui-org/slider";
 import {useEffect, useRef, useState} from "react";
 import {getAPIServer} from "@/config/site";
 import Lora from "@/components/Lora";
@@ -14,15 +14,15 @@ import LoraBox from "@/components/LoraBox";
 import State, {PostState, StateContainer} from "@/components/State";
 import Prompt from "@/components/Prompt";
 import PromptBox from "@/components/PromptBox";
-import {useDisclosure} from "@heroui/use-disclosure";
-import {Drawer, DrawerBody, DrawerHeader} from "@heroui/drawer";
-import {AutocompleteItem, DrawerContent} from "@heroui/react";
+import {useDisclosure} from "@nextui-org/use-disclosure";
+import {Drawer, DrawerBody, DrawerHeader} from "@nextui-org/drawer";
+import {AutocompleteItem, DrawerContent} from "@nextui-org/react";
 import {MdDeleteForever, MdOutlineFileDownload, MdSave, MdSettings} from "react-icons/md";
-import {CircularProgress} from "@heroui/progress";
+import {CircularProgress} from "@nextui-org/progress";
 import DanbooruTrieSearchProvider from "@/components/DanbooruTrieSearch";
-import {Autocomplete} from "@heroui/autocomplete";
+import {Autocomplete} from "@nextui-org/autocomplete";
 import {FaFileImport} from "react-icons/fa6";
-import {Popover, PopoverContent, PopoverTrigger} from "@heroui/popover";
+import {Popover, PopoverContent, PopoverTrigger} from "@nextui-org/popover";
 
 export default function Home() {
     const clientId = useRef("")
@@ -392,7 +392,8 @@ export default function Home() {
                                                                 setSelectedCheckpoint(event.target.value)
                                                             }}>
                                                         {checkpoints.map((checkpoint) => (
-                                                            <SelectItem key={checkpoint}>{checkpoint}</SelectItem>
+                                                            <SelectItem key={checkpoint}
+                                                                        value={checkpoint}>{checkpoint}</SelectItem>
                                                         ))}
                                                     </Select>
                                                     <Select label={"VAE"} selectedKeys={[selectedVAE]}
@@ -400,7 +401,7 @@ export default function Home() {
                                                                 setSelectedVAE(event.target.value)
                                                             }}>
                                                         {VAEs.map((vae) => (
-                                                            <SelectItem key={vae}>{vae}</SelectItem>
+                                                            <SelectItem key={vae} value={vae}>{vae}</SelectItem>
                                                         ))}
                                                     </Select>
                                                 </div>
@@ -462,7 +463,7 @@ export default function Home() {
                                         }} label={"Image size"}>
                                             {
                                                 imageSizes.map((size) => (
-                                                    <SelectItem key={size}>{size}</SelectItem>
+                                                    <SelectItem key={size} value={size}>{size}</SelectItem>
                                                 ))
                                             }
                                         </Select>
@@ -476,14 +477,14 @@ export default function Home() {
                                             setSelectedSampler(event.target.value)
                                         }} label={"Sampler"}>
                                             {samplers.map((sampler) => (
-                                                <SelectItem key={sampler}>{sampler}</SelectItem>
+                                                <SelectItem key={sampler} value={sampler}>{sampler}</SelectItem>
                                             ))}
                                         </Select>
                                         <Select selectedKeys={[selectedScheduler]} onChange={(event) => {
                                             setSelectedScheduler(event.target.value)
                                         }} label={"Scheduler"}>
                                             {schedulers.map((scheduler) => (
-                                                <SelectItem key={scheduler}>{scheduler}</SelectItem>
+                                                <SelectItem key={scheduler} value={scheduler}>{scheduler}</SelectItem>
                                             ))}
                                         </Select>
                                         <Input label={"Seed"} value={seed.toString()} onChange={(event) => {

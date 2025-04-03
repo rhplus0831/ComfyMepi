@@ -1,7 +1,7 @@
-import {Input, Textarea} from "@heroui/input";
+import {Input, Textarea} from "@nextui-org/input";
 import Prompt from "@/components/Prompt";
-import {Button} from "@heroui/button";
-import {DeleteIcon} from "@heroui/shared-icons";
+import {Button} from "@nextui-org/button";
+import {DeleteIcon} from "@nextui-org/shared-icons";
 import PromptTextArea from "@/components/PromptTextArea";
 
 export default function PromptBox({prompt, updatePrompt, removePrompt}: {

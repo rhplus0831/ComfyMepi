@@ -1,8 +1,8 @@
-import {Select, SelectItem} from "@heroui/select";
+import {Select, SelectItem} from "@nextui-org/select";
 import Lora from "@/components/Lora";
-import {Slider} from "@heroui/slider";
-import {Button} from "@heroui/button";
-import {DeleteIcon} from "@heroui/shared-icons";
+import {Slider} from "@nextui-org/slider";
+import {Button} from "@nextui-org/button";
+import {DeleteIcon} from "@nextui-org/shared-icons";
 
 export default function LoraBox({lora, loraNames, updateLora, removeLora}: {
     lora: Lora,
@@ -19,7 +19,7 @@ export default function LoraBox({lora, loraNames, updateLora, removeLora}: {
                     updateLora(lora)
                 }} >
                     {loraNames.map((lora) => (
-                        <SelectItem key={lora}>{lora}</SelectItem>
+                        <SelectItem key={lora} value={lora}>{lora}</SelectItem>
                     ))}
                 </Select>
                 <Button size={"lg"} className={"flex-none"} isIconOnly onPress={() => {
