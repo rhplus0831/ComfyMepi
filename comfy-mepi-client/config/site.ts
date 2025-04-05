@@ -7,7 +7,7 @@ export const siteConfig = {
 
 export function getAPIServer() {
     if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
-        return 'http://127.0.0.1:8188/'
+        return 'http://192.168.0.43:8188/'
     } else {
         return '/'
     }

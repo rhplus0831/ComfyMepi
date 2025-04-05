@@ -51,8 +51,7 @@ export default function Home() {
 
     const [useLocalPresets, setUseLocalPresets] = useState(false)
 
-    const [inProgress, setInProgress] = useState(false)
-    const [progress, setProgress] = useState("Wait for Something...")
+    const [progress, setProgress] = useState("")
 
     const [inited, setInited] = useState(false)
 
@@ -155,12 +154,15 @@ export default function Home() {
                 loadState(state)
             }
 
-
             await loadPresets()
+
+            const lastPUUID = localStorage.getItem("lastPromptUUID")
+            if (lastPUUID) {
+                setLastPromptUUID(lastPUUID)
+            }
 
             setInited(true)
         }
-
 
         const cid = localStorage.getItem("clientId")
         if (cid) {
@@ -261,8 +263,13 @@ export default function Home() {
     async function findAndDisplayPrompt(uuid: string) {
         const response = await fetch(getAPIServer() + "history/" + uuid)
         const history = await response.json()
+
+        if (!history.hasOwnProperty(uuid)) {
+            return
+        }
+
         let imageMeta
-        if (json.trim() === '') {
+        if (history[uuid]["outputs"].hasOwnProperty("8-SaveImage")) {
             imageMeta = history[uuid]["outputs"]["8-SaveImage"]["images"][0]
         } else {
             let found = '?'
@@ -283,6 +290,9 @@ export default function Home() {
 
     useEffect(() => {
         if (!ws.current) return
+        if(lastPromptUUID) {
+            findAndDisplayPrompt(lastPromptUUID).then()
+        }
         ws.current.onmessage = (event) => {
             if (event.data) {
                 const msg = JSON.parse(event.data)
@@ -296,10 +306,12 @@ export default function Home() {
                     if (type == "progress") {
                         setProgress(`${type}: (${data["value"]} / ${data["max"]})`)
                     } else if (type == "execution_success") {
-                        setInProgress(false)
+                        setProgress("")
                         findAndDisplayPrompt(lastPromptUUID).then()
                     } else {
-                        setProgress(`${type}: ${data["node"]}`)
+                        if(data["node"] !== null) {
+                            setProgress(`${type}: ${data["node"]}`)
+                        }
                     }
                 }
             }
@@ -503,7 +515,7 @@ export default function Home() {
             <div className={"relative flex items-center justify-center flex-grow min-h-0 overflow-hidden"}>
                 <img alt={"ai-generated content"} src={destImageSrc}
                      className="max-w-full max-h-full object-contain"/>
-                {inProgress ?
+                {progress ?
                     <CircularProgress className={"absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"}
                                       size={"lg"}/> : ""}
             </div>
@@ -513,8 +525,8 @@ export default function Home() {
                         const uuid = await PostState(generateState(), clientId.current)
                         console.log(uuid)
                         setLastPromptUUID(uuid)
+                        localStorage.setItem("lastPromptUUID", uuid)
                         setProgress("Wait for Queue")
-                        setInProgress(true)
                     } catch (e) {
                         console.log(e)
                     }
@@ -524,7 +536,7 @@ export default function Home() {
                             window.open(destImageSrc?.replace("&preview=true", ""))
                         }}><MdOutlineFileDownload size={30}/></Button>
             </div>
-            {inProgress ? <section
+            {progress ? <section
                 className={`absolute bottom-5 left-1/2 -translate-x-1/2 w-screen lg:w-1/2 h-14 p-7 bg-[#000000BB] flex items-center justify-center text-center rounded-2xl`}>
                 {progress}
             </section> : ""}
