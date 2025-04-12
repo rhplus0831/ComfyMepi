@@ -16,7 +16,7 @@ import Prompt from "@/components/Prompt";
 import PromptBox from "@/components/PromptBox";
 import {useDisclosure} from "@nextui-org/use-disclosure";
 import {Drawer, DrawerBody, DrawerHeader} from "@nextui-org/drawer";
-import {AutocompleteItem, DrawerContent} from "@nextui-org/react";
+import {AutocompleteItem, Checkbox, DrawerContent} from "@nextui-org/react";
 import {MdDeleteForever, MdOutlineFileDownload, MdSave, MdSettings} from "react-icons/md";
 import {CircularProgress} from "@nextui-org/progress";
 import DanbooruTrieSearchProvider from "@/components/DanbooruTrieSearch";
@@ -56,6 +56,9 @@ export default function Home() {
     const [inited, setInited] = useState(false)
 
     const [presets, setPresets] = useState<StateContainer>({})
+
+    const audio = useRef<HTMLAudioElement | null>(null)
+    const [playEffectOnComplete, setPlayEffectOnComplete] = useState(false);
 
     const imageSizes = [
         "1536x640",
@@ -160,7 +163,9 @@ export default function Home() {
             if (lastPUUID) {
                 setLastPromptUUID(lastPUUID)
             }
-
+            audio.current = new Audio(getAPIServer() + "mepi/V_Mephisto_C_Work02_KR.opus")
+            console.log(`setPlayEffectOnComplete: ${localStorage.getItem("playEffectOnComplete")}`)
+            setPlayEffectOnComplete(localStorage.getItem("playEffectOnComplete") != null)
             setInited(true)
         }
 
@@ -290,7 +295,7 @@ export default function Home() {
 
     useEffect(() => {
         if (!ws.current) return
-        if(lastPromptUUID) {
+        if (lastPromptUUID) {
             findAndDisplayPrompt(lastPromptUUID).then()
         }
         ws.current.onmessage = (event) => {
@@ -306,17 +311,21 @@ export default function Home() {
                     if (type == "progress") {
                         setProgress(`${type}: (${data["value"]} / ${data["max"]})`)
                     } else if (type == "execution_success") {
+                        if (playEffectOnComplete && audio.current != null) {
+                            audio.current.volume = 0.5
+                            audio.current.play()
+                        }
                         setProgress("")
                         findAndDisplayPrompt(lastPromptUUID).then()
                     } else {
-                        if(data["node"] !== null) {
+                        if (data["node"] !== null) {
                             setProgress(`${type}: ${data["node"]}`)
                         }
                     }
                 }
             }
         };
-    }, [ws, lastPromptUUID]);
+    }, [ws, lastPromptUUID, playEffectOnComplete]);
 
     const drawerClosure = useDisclosure();
 
@@ -505,6 +514,14 @@ export default function Home() {
                                         <Button className={"w-full"} onPress={onClose}>
                                             닫기
                                         </Button>
+                                        <Checkbox isSelected={playEffectOnComplete} onValueChange={(value) => {
+                                            setPlayEffectOnComplete(value)
+                                            if (value && localStorage.getItem("playEffectOnComplete") == null) {
+                                                localStorage.setItem("playEffectOnComplete", "yes")
+                                            } else if (!value && localStorage.getItem("playEffectOnComplete") != null) {
+                                                localStorage.removeItem("playEffectOnComplete")
+                                            }
+                                        }}>완료시 소리재생</Checkbox>
                                     </section>
                                 </DrawerBody>
                             </>
